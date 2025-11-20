@@ -1,0 +1,85 @@
+plugins {
+    id 'org.springframework.boot' version "$spring_boot_ver"
+    id 'io.spring.dependency-management' version "$spring_dependency_management_ver"
+    id 'jacoco'
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+dependencies {
+    implementation project(':interface')
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:' + springdoc_starter_ver
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign:' + spring_openfeign_starter_ver
+    implementation 'com.github.ben-manes.caffeine:caffeine:' + caffeine_ver
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    implementation 'org.mapstruct:mapstruct:' + mapstruct_ver
+    annotationProcessor 'org.mapstruct:mapstruct-processor:' + mapstruct_ver
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+jar {
+    enabled = false;
+}
+
+jacoco {
+    toolVersion = "$jacoco_ver"
+}
+
+def excludedFromCoverage = [
+        '**/configuration/**',
+        '**/client/**',
+        '**/*CurrencyCode.class',
+        '**/SwaggerApiApplication.class'
+]
+
+jacocoTestReport {
+    dependsOn test
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+
+    classDirectories.setFrom(
+            files(classDirectories.files.collect {
+                fileTree(dir: it, exclude: excludedFromCoverage)
+            })
+    )
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.95
+            }
+        }
+    }
+
+    classDirectories.setFrom(
+            files(jacocoTestReport.classDirectories.files.collect {
+                fileTree(dir: it, exclude: excludedFromCoverage)
+            })
+    )
+}
+
+test {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+check {
+    dependsOn jacocoTestCoverageVerification
+//    dependsOn integrationTest
+}

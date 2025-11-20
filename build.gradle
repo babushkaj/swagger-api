@@ -1,0 +1,24 @@
+allprojects {
+    group = 'com.katsiankou'
+    version = '0.0.1-SNAPSHOT'
+    description = 'Demo project with Swagger. A wrapper on NBRB "rates API"'
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+
+    apply plugin: 'java'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(24)
+        }
+    }
+
+    tasks.named('test') {
+        useJUnitPlatform()
+    }
+}
