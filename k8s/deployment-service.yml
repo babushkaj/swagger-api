@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swagger-api-dev-deployment
+  namespace: swagger-api-dev
+  labels:
+    app: swagger-api-dev-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: swagger-api-dev-deployment
+  template:
+    metadata:
+      labels:
+        app: swagger-api-dev-deployment
+    spec:
+      containers:
+        - name: swagger-api-dev
+          image: swagger-api:latest
+          imagePullPolicy: Never #for minikube only
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "125m"
+            limits:
+              memory: "192Mi"
+              cpu: "250m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            failureThreshold: 3
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            failureThreshold: 3
+            periodSeconds: 5
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            failureThreshold: 30
+            periodSeconds: 5
+          volumeMounts:
+            - name: tmp-volume #add a writable dir to allow Spring Boot Tomcat start
+              mountPath: /tmp
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: JAVA_OPTS
+              value: "-Djava.io.tmpdir=/tmp"
+      automountServiceAccountToken: false
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: swagger-api-dev-service
+  namespace: swagger-api-dev
+spec:
+  selector:
+    app: swagger-api-dev-deployment
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: LoadBalancer
